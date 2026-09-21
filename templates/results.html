@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portfolio Recommendations | InvestAI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="results-body">
+  <div class="results-shell">
+    {% if not portfolios %}
+      <div class="empty-state" role="status">
+        <h2>No portfolio generated yet</h2>
+        <p>Enter your investment preferences to generate an optimized portfolio strategy tailored to your goals.</p>
+        <a href="/" class="secondary-btn">Build Portfolio</a>
+      </div>
+    {% else %}
+      <div class="results-toolbar">
+        <a href="/" class="back-link" aria-label="Modify preferences">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 18l-6-6 6-6"></path>
+          </svg>
+          Modify Preferences
+        </a>
+      </div>
+
+      <header class="results-header">
+        <h1>Portfolio Recommendations</h1>
+        <p>Portfolio strategies generated based on your investment preferences and available market data.</p>
+      </header>
+
+      <div class="portfolio-meta" aria-label="Selected preferences summary">
+        <div class="meta-chip">
+          <span>Investment</span>
+          <strong>{{ selected_investment | inr }}</strong>
+        </div>
+        <div class="meta-chip">
+          <span>Risk</span>
+          <strong>{{ selected_risk }}</strong>
+        </div>
+        <div class="meta-chip">
+          <span>Horizon</span>
+          <strong>{{ selected_goal }}</strong>
+        </div>
+      </div>
+
+      {% for result in portfolios %}
+        {% set total_allocation = result.allocation.values() | sum %}
+        {% set colors = ['#2563eb', '#0ea5e9', '#10b981', '#f59e0b', '#a78bfa', '#f97316', '#ef4444', '#14b8a6'] %}
+        {% set allocation_items = [] %}
+        {% for stock, amount in result.allocation.items() %}
+          {% set _ = allocation_items.append({'name': stock, 'amount': amount, 'percent': (amount / total_allocation) * 100}) %}
+        {% endfor %}
+        {% set chart_segments = [] %}
+        {% set cumulative = 0 %}
+        {% for item in allocation_items %}
+          {% set start = cumulative %}
+          {% set end = cumulative + item.percent %}
+          {% set cumulative = end %}
+          {% set _ = chart_segments.append({'start': start, 'end': end, 'color': colors[loop.index0 % colors|length], 'name': item.name, 'amount': item.amount, 'percent': item.percent}) %}
+        {% endfor %}
+        {% set gradient = '' %}
+        {% for segment in chart_segments %}
+          {% set gradient = gradient ~ segment.color ~ ' ' ~ segment.start ~ '% ' ~ segment.end ~ '%,' %}
+        {% endfor %}
+        {% set gradient = gradient[:-1] %}
+
+        {% set strategy_value = result.strategy or 'Unavailable' %}
+        {% set strategy_status = 'Fallback' if 'Random Fallback' in strategy_value else ('Optimized' if 'Sharpe' in strategy_value or 'Volatility' in strategy_value or 'Target' in strategy_value or 'HRP' in strategy_value or 'Risk Parity' in strategy_value else 'Model Generated') %}
+
+        <section class="result-card" aria-labelledby="strategy-{{ loop.index }}">
+          <div class="result-header-row">
+            <div>
+              <p class="eyebrow">Portfolio Strategy</p>
+              <h2 id="strategy-{{ loop.index }}">Portfolio Strategy {{ '%02d' % loop.index }}</h2>
+            </div>
+          </div>
+
+          <div class="summary-grid">
+            <div class="metric-card">
+              <div class="metric-top">
+                <div class="metric-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 21h18"></path>
+                    <path d="M7 16V8"></path>
+                    <path d="M12 16V5"></path>
+                    <path d="M17 16v-9"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="metric-label">Investment</div>
+              <p class="metric-value">{{ result.investment | inr }}</p>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-top">
+                <div class="metric-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 17l6-6 4 4 8-8"></path>
+                    <path d="M14 7h7v7"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="metric-label">Expected Return</div>
+              <p class="metric-value">{{ result.expected_return_percent }}%</p>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-top">
+                <div class="metric-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9"></circle>
+                    <path d="M12 7v5l3 3"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="metric-label">Holding Period</div>
+              <p class="metric-value">{{ result.suggested_duration }}</p>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-top">
+                <div class="metric-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 14l7-7 4 4 7-7"></path>
+                    <path d="M20 8v6h-6"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="metric-label">Projected Value</div>
+              <p class="metric-value">{{ result.future_value | inr }}</p>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-top">
+                <div class="metric-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 1v22"></path>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="metric-label">Net Profit</div>
+              <p class="metric-value">{{ result.net_profit | inr }}</p>
+            </div>
+          </div>
+
+          <div class="allocation-layout">
+            <div class="table-card">
+              <h3 class="card-title">Portfolio Allocation</h3>
+              <table class="allocation-table" aria-label="Portfolio allocation table">
+                <thead>
+                  <tr>
+                    <th>Stock</th>
+                    <th>Allocation</th>
+                    <th>Investment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for stock, amount in result.allocation.items() %}
+                    {% set percent = (amount / total_allocation) * 100 %}
+                    <tr>
+                      <td class="stock-name"><span>{{ stock }}</span></td>
+                      <td>{{ '%.2f' % percent }}%</td>
+                      <td>{{ amount | inr }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="chart-card">
+              <h3 class="card-title">Allocation</h3>
+              <div class="chart-layout">
+                <div class="donut-wrap" aria-label="Portfolio allocation chart" style="background: conic-gradient({{ gradient }});">
+                  <div class="chart-center">
+                    <div>
+                      <strong>{{ result.allocation|length }}</strong>
+                      <span>Holdings</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="legend-list" aria-label="Allocation legend">
+                  {% for segment in chart_segments %}
+                    <div class="legend-item">
+                      <div class="legend-left">
+                        <span class="legend-swatch" style="background: {{ segment.color }};"></span>
+                        <span>{{ segment.name }}</span>
+                      </div>
+                      <strong>{{ '%.2f' % segment.percent }}%</strong>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="strategy-card">
+            <div class="strategy-row">
+              <div>
+                <div class="strategy-label">Optimization Strategy</div>
+                <div class="strategy-value">{{ result.strategy }}</div>
+              </div>
+              <div class="info-pill" aria-label="Strategy status">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="M12 16v-4"></path>
+                  <path d="M12 8h.01"></path>
+                </svg>
+                {{ strategy_status }}
+              </div>
+            </div>
+          </div>
+
+          <div class="disclaimer">Disclaimer: Portfolio projections are estimates based on available data and model outputs. They are not guaranteed returns or financial advice.</div>
+        </section>
+      {% endfor %}
+
+      <div class="text-center mt-3">
+        <button class="secondary-btn" type="button" onclick="window.print()">Download PDF</button>
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>
+

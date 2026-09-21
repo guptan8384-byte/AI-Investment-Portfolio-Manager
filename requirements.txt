@@ -1,0 +1,11 @@
+Flask
+requests
+pandas
+numpy
+xgboost
+PyPortfolioOpt
+tqdm
+matplotlib
+scikit-learn
+pdfkit
+jinja2
