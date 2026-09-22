@@ -4,8 +4,6 @@ pandas
 numpy
 xgboost
 PyPortfolioOpt
-tqdm
 matplotlib
 scikit-learn
-pdfkit
-jinja2
+python-dotenv
