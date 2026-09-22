@@ -1,12 +1,9 @@
-
 import requests, urllib.parse, gzip, json, pandas as pd, numpy as np
 from datetime import datetime
 from io import BytesIO
 from xgboost import XGBRegressor
 from pypfopt import EfficientFrontier, risk_models, expected_returns, HRPOpt
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+
 import os, warnings, random
 
 warnings.filterwarnings("ignore")
@@ -202,16 +199,7 @@ def generate_unique_portfolios(token, investment, risk, goal):
         fv = round(investment * (1 + exp_ret) ** years, 2)
         profit = round(fv - investment, 2)
 
-        os.makedirs("static", exist_ok=True)
-        chart_filename = f"portfolio_{i+1}.png"
-        chart_path = os.path.join("static", chart_filename)
-        plt.figure(figsize=(6, 6))
-        alloc.plot(kind='pie', autopct='%1.1f%%', startangle=90)
-        plt.title("Portfolio Allocation")
-        plt.ylabel('')
-        plt.tight_layout()
-        plt.savefig(chart_path)
-        plt.close()
+       
 
         portfolios.append({
             'allocation': alloc.round(2).to_dict(),
@@ -221,7 +209,7 @@ def generate_unique_portfolios(token, investment, risk, goal):
             'net_profit': profit,
             'suggested_duration': duration_label,
             'return_period': 'monthly' if goal == 'short' else 'yearly',
-            'chart_filename': chart_filename,
+            
             'strategy': strategy_name
         })
 
