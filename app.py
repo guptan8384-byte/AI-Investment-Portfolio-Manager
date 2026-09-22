@@ -1,9 +1,16 @@
+import os
+import json
+import requests
+import urllib.parse
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from flask import Flask, render_template, request, redirect, url_for, session
 from backend import authenticate, generate_unique_portfolios
-import os, json
 
 app = Flask(__name__)
-app.secret_key = 'supersecretkey'  # Must be set for sessions
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")  # Must be set for sessions
 
 USERS_FILE = "users.json"
 
@@ -102,6 +109,64 @@ def logout():
     session.pop('user', None)
     return redirect('/login')
 
+@app.route('/connect-upstox')
+def connect_upstox():
+    if 'user' not in session:
+        return redirect('/login')
+
+    params = {
+        'response_type': 'code',
+        'client_id': os.environ.get('UPSTOX_CLIENT_ID'),
+        'redirect_uri': os.environ.get('UPSTOX_REDIRECT_URI')
+    }
+
+    auth_url = (
+        "https://api.upstox.com/v2/login/authorization/dialog?"
+        + urllib.parse.urlencode(params)
+    )
+
+    return redirect(auth_url)
+
+
+@app.route('/upstox/callback')
+def upstox_callback():
+    if 'user' not in session:
+        return redirect('/login')
+
+    code = request.args.get('code')
+
+    if not code:
+        return "Upstox authorization failed: authorization code missing.", 400
+
+    token_response = requests.post(
+        "https://api.upstox.com/v2/login/authorization/token",
+        headers={
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+        },
+        data={
+            'code': code,
+            'client_id': os.environ.get('UPSTOX_CLIENT_ID'),
+            'client_secret': os.environ.get('UPSTOX_CLIENT_SECRET'),
+            'redirect_uri': os.environ.get('UPSTOX_REDIRECT_URI'),
+            'grant_type': 'authorization_code'
+        },
+        timeout=20
+    )
+
+    if token_response.status_code != 200:
+        return "Unable to authenticate with Upstox.", 400
+
+    token_data = token_response.json()
+    access_token = token_data.get('access_token')
+
+    if not access_token:
+        return "Upstox did not return an access token.", 400
+
+    session['upstox_access_token'] = access_token
+
+    return redirect('/')
+
 
 @app.route('/')
 def index():
@@ -119,7 +184,11 @@ def results():
     time_goal = request.form['goal']
     risk_label = {'low': 'Low Risk', 'moderate': 'Moderate Risk', 'high': 'High Risk'}.get(risk_level, risk_level.title())
     goal_label = {'short': 'Short Term', 'long': 'Long Term'}.get(time_goal, time_goal.title())
-    token = authenticate()
+    token = session.get('upstox_access_token')
+
+    if not token:
+        return redirect('/connect-upstox')
+
     portfolios = generate_unique_portfolios(token, investment, risk_level, time_goal)
     return render_template(
         'results.html',

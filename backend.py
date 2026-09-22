@@ -14,10 +14,10 @@ warnings.filterwarnings("ignore")
 _cached_token = None
 
 class APIConfig:
-    CLIENT_ID = '543e49a1-de8d-4b61-b3ad-fdc7c39058f9'
-    CLIENT_SECRET = 'n62ykvkckl'
-    REDIRECT_URI = 'https://stocksprediction.com'
-    BASE_URL = 'https://api.upstox.com/v2/'
+    CLIENT_ID = os.environ.get("UPSTOX_CLIENT_ID")
+    CLIENT_SECRET = os.environ.get("UPSTOX_CLIENT_SECRET")
+    REDIRECT_URI = os.environ.get("UPSTOX_REDIRECT_URI")
+    BASE_URL = "https://api.upstox.com/v2/"
 
 def authenticate():
     global _cached_token
